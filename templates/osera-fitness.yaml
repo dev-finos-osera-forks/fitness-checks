@@ -11,6 +11,7 @@ on:
     tags: # the two release tag forms of OSERA-SP-0.1.0: the Java CARE style form (REL-003-JAVA) and the generic form (the + must be escaped)
       - 'v*-osera-*'
       - 'v*\+osera-patch.*'
+      - 'v*\+backpatch.*' # DEV ONLY: Moderne's existing release tags
 
 permissions:
   contents: read # for checking out the repository.

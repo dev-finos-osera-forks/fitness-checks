@@ -1,0 +1,223 @@
+# Copyright (c) 2026 Control Plane Limited. All rights reserved.
+# Built by ControlPlane for the FINOS OSERA Exchange.
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OSERA fitness checks on a patch repository at a release tag. Called by the ten line workflow every patch
+# repository carries (templates/osera-fitness.yaml) with one input, the tag. One composite action per requirement
+# of the standards pack, one signed result.
+name: fitness
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: 'the release tag under test, for example v5.3.39.1-osera-00001 (Java, REL-003-JAVA) or v2.14.2+osera-patch.001 (generic)'
+        required: true
+        type: string
+      reference:
+        description: 'only for the library testing itself: which reference repository to check (owner/name); ignored for every other caller'
+        required: false
+        default: ''
+        type: string
+    outputs:
+      result:
+        description: 'pass, warn, fail or not-tested'
+        value: ${{ jobs.fitness.outputs.result }}
+
+jobs:
+  fitness:
+    runs-on: ubuntu-24.04 # pinned image, not the moving latest
+    # Fixed here, never taken from the caller: where this library lives (also the organisation FORK-001 expects),
+    # and the reference repository the library's own e2e checks. The actions are checked out at the commit of this workflow file (step 1).
+    # At the move to finos-osera these lines change and nothing else.
+    env:
+      GH_TOKEN: ${{ github.token }} # the checks read the fork parent and commit accounts through the API; the job's own token, read only
+      LIBRARY: finos-osera-forks/fitness-checks
+      STANDARDS: finos-osera/remediation-standards # the approved producer registry lives here, docs/_data/approved_producers.yml (REL-004)
+      STANDARDS_REF: main # the pack's release tag (OSERA-SP-0.1.0) once it exists; until then main
+      REFERENCE: d1gital-f/patch-jackson-core
+    outputs:
+      result: ${{ steps.result.outputs.result }}
+    permissions:
+      contents: read # for checking out the patch repository and reading its commits through the API.
+      id-token: write # for creating OIDC tokens for signing.
+      attestations: write # for GitHub Attestations.
+    steps:
+
+      # 1. What to check. A producer's run checks the producer's own repository with the actions at the released tag;
+      #    the library's own e2e checks a reference repository with the actions at the commit under test.
+      #    The environment every check action reads is set here, once.
+      - name: What to check
+        id: target
+        env:
+          CALLER: ${{ github.repository }}
+          OSERA_TAG: ${{ inputs.tag }}
+          THIS_COMMIT: ${{ github.sha }}
+          REFERENCE_INPUT: ${{ inputs.reference }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          OWNER_ID: ${{ github.repository_owner_id }}
+          IS_FORK: ${{ github.event.repository.fork }}
+        run: |
+          # 1. the library checking itself: the reference repository, the actions at the commit under test
+          if [ "$CALLER" = "$LIBRARY" ]; then
+            TARGET="${REFERENCE_INPUT:-$REFERENCE}"
+            REF="$THIS_COMMIT"
+          else
+            # 2. a producer's run: its own repository, the actions at the exact commit this workflow file came from.
+            #    The caller named a tag (v1); the OIDC token's job_workflow_sha claim says which commit that tag resolved to,
+            #    the same claim the attestation carries. The token is read for that claim only and never sent anywhere.
+            TARGET="$CALLER"
+            TOKEN="$(curl -sS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=osera-fitness-checks" | jq -r .value)"
+            CLAIMS="$(printf '%s' "$TOKEN" | cut -d. -f2 | tr '_-' '/+' | awk '{ n = length($0) % 4; if (n == 2) { $0 = $0 "==" } else if (n == 3) { $0 = $0 "=" }; print }' | base64 -d)"
+            REF="$(printf '%s' "$CLAIMS" | jq -r '.job_workflow_sha // empty')"
+            if [ -z "$REF" ]; then
+              echo "::error::could not read job_workflow_sha from the OIDC token, refusing to check out the library at a moving tag"
+              exit 1
+            fi
+            echo "this workflow file: $(printf '%s' "$CLAIMS" | jq -r .job_workflow_ref) at $REF"
+          fi
+          echo "repository=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "name=${TARGET##*/}" >> "$GITHUB_OUTPUT"
+          echo "library-ref=$REF" >> "$GITHUB_OUTPUT"
+          {
+            echo "OSERA_TAG=$OSERA_TAG"
+            echo "OSERA_REPOSITORY=$TARGET"
+            echo "OSERA_EXPECTED_ORG=${LIBRARY%%/*}"
+            echo "OSERA_APPROVED_PRODUCERS=.osera-standards/docs/_data/approved_producers.yml"
+            echo "OSERA_ACTOR=$ACTOR"
+            echo "OSERA_RESULTS_DIR=$RUNNER_TEMP/osera-results"
+            echo "OSERA_PACK=OSERA-SP-0.1.0"
+            echo "OSERA_PACK_FILE=.osera-standards/docs/catalog/packs/OSERA-SP-0.1.0.json" # the pack file the checks compare their version with, at STANDARDS_REF
+            # what GitHub itself says about the repository the workflow runs in; empty when the library tests a reference, the checks then ask the API
+            if [ "$TARGET" = "$CALLER" ]; then echo "OSERA_OWNER=$OWNER"; echo "OSERA_OWNER_ID=$OWNER_ID"; echo "OSERA_IS_FORK=$IS_FORK"; fi
+          } >> "$GITHUB_ENV"
+          # the records live outside the checkout, nothing the producer commits can pre fill them
+          rm -rf "$RUNNER_TEMP/osera-results" && mkdir -p "$RUNNER_TEMP/osera-results"
+          echo "checking $TARGET at $OSERA_TAG, library $LIBRARY at $REF"
+
+      # 2. The source: the patch repository at the tag, with every branch and tag the checks look at.
+      - name: Checkout the patch repository at the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # the token is not left in .git/config
+          repository: ${{ steps.target.outputs.repository }}
+          ref: refs/tags/${{ inputs.tag }} # the tag ref itself, never a branch of the same name
+          fetch-depth: 0
+      - name: Fetch every branch and tag
+        run: git fetch --no-tags origin '+refs/heads/*:refs/remotes/origin/*' && git fetch --tags origin
+      - name: The tagged commit is HEAD
+        id: commit
+        env:
+          OSERA_TAG: ${{ inputs.tag }}
+        run: |
+          SHA="$(git rev-parse "refs/tags/${OSERA_TAG}^{commit}")"
+          [ "$(git rev-parse HEAD)" = "$SHA" ] || { echo "HEAD $(git rev-parse HEAD) is not the tag's commit $SHA"; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      # 3. The library: the actions, the shared record library and the approved producers file, next to the source.
+      - name: Checkout the osera-fitness-checks library
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # the token is not left in .git/config
+          repository: ${{ env.LIBRARY }}
+          ref: ${{ steps.target.outputs.library-ref }}
+          path: .osera-fitness
+      - name: Checkout the standards repository, for the approved producer registry
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # the token is not left in .git/config
+          repository: ${{ env.STANDARDS }}
+          ref: ${{ env.STANDARDS_REF }}
+          path: .osera-standards
+      - name: The registry revision the checks read, recorded in the result
+        run: echo "OSERA_REGISTRY_REF=$STANDARDS@$(git -C .osera-standards rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: The exact library commit the checks run from, recorded in the result
+        id: library
+        run: |
+          echo "commit=$(git -C .osera-fitness rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "OSERA_LIBRARY=$LIBRARY@$(git -C .osera-fitness rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      # 4. The checks, one action per requirement, every one runs whatever the previous one said.
+      - name: FORK-001.REQ-001
+        uses: ./.osera-fitness/.github/actions/fork-001-req-001
+        continue-on-error: true
+      - name: FORK-001.REQ-002
+        uses: ./.osera-fitness/.github/actions/fork-001-req-002
+        continue-on-error: true
+      - name: FORK-002.REQ-001
+        uses: ./.osera-fitness/.github/actions/fork-002-req-001
+        continue-on-error: true
+      - name: FORK-003.REQ-001
+        uses: ./.osera-fitness/.github/actions/fork-003-req-001
+        continue-on-error: true
+      - name: SRC-002.REQ-001
+        uses: ./.osera-fitness/.github/actions/src-002-req-001
+        continue-on-error: true
+      - name: SRC-002.REQ-002
+        uses: ./.osera-fitness/.github/actions/src-002-req-002
+        continue-on-error: true
+      - name: SRC-003.REQ-001
+        uses: ./.osera-fitness/.github/actions/src-003-req-001
+        continue-on-error: true
+      - name: REL-001.REQ-001
+        uses: ./.osera-fitness/.github/actions/rel-001-req-001
+        continue-on-error: true
+      - name: CP-REL-004-01 (proposal)
+        uses: ./.osera-fitness/.github/actions/proposal-rel-004-producer-named
+        continue-on-error: true
+      - name: CP-REL-004-02 (proposal)
+        uses: ./.osera-fitness/.github/actions/proposal-rel-004-producer-approved
+        continue-on-error: true
+      - name: CP-REL-004-03 (proposal)
+        uses: ./.osera-fitness/.github/actions/proposal-rel-004-accounts-in-entry
+        continue-on-error: true
+
+      # 5. The result, signed twice with the workflow's identity: once on the file, for people (gh attestation verify),
+      #    once under the SHA256 of the tagged commit id, for the gate, which computes that digest from the tag alone.
+      - name: Write the result
+        id: result
+        uses: ./.osera-fitness/.github/actions/write-result
+      - name: Sign the result
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.result.outputs.path }}
+          predicate-type: https://osera.finos.org/fitness-result/v1
+          predicate-path: ${{ steps.result.outputs.path }}
+      - name: The gate's subject, sha256 of the tagged commit id
+        id: subject
+        env:
+          COMMIT: ${{ steps.commit.outputs.sha }}
+          REPOSITORY: ${{ steps.target.outputs.repository }}
+        run: |
+          echo "digest=$(printf '%s' "$COMMIT" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "name=git:$REPOSITORY@$COMMIT" >> "$GITHUB_OUTPUT"
+      - name: Sign the result again, under the gate's subject
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.subject.outputs.name }}
+          subject-digest: sha256:${{ steps.subject.outputs.digest }}
+          predicate-type: https://osera.finos.org/fitness-result/v1
+          predicate-path: ${{ steps.result.outputs.path }}
+
+      # 6. For people: the result and its Sigstore bundle as a workflow artifact.
+      - name: Keep the bundle next to the result
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: cp "$BUNDLE" "$RUNNER_TEMP/osera-results/result.sigstore.json"
+      - name: Upload the result and its bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: osera-fitness-result-${{ steps.target.outputs.name }}
+          path: |
+            ${{ runner.temp }}/osera-results/result.json
+            ${{ runner.temp }}/osera-results/result.sigstore.json
+
+      # 7. The verdict: a producer's run is red when a blocking check failed or could not run.
+      #    When the library tests itself, the e2e compare job decides instead.
+      - name: Blocking checks decide
+        if: ${{ github.repository != env.LIBRARY }}
+        env:
+          RESULT: ${{ steps.result.outputs.result }}
+        run: test "$RESULT" = pass || test "$RESULT" = warn

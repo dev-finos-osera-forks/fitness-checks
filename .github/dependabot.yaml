@@ -1,0 +1,17 @@
+# Dependabot keeps the pinned third party actions current: the workflows at the root and every composite action.
+# A pull request a week, all actions in one, lint and e2e run on it, v1 moves only after a release.
+version: 2
+
+updates:
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/"
+      - "/.github/actions/*"
+    groups:
+      actions:
+        patterns:
+          - "*"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7 # a new action version waits a week before Dependabot proposes it

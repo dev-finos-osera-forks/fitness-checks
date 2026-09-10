@@ -15,7 +15,12 @@ runs:
 
         # 1. the patch branches that contain the release tag, among the two names the standard allows
         step "listing the patch branches"
-        WITH_TAG="$(ev git branch -r --list "origin/patch/$VERSION" "origin/patch/$LINE" --contains "refs/tags/$OSERA_TAG")"
+        # DEV ONLY: Moderne's existing branch names are accepted next to the ratified ones
+        if [ "$OSERA_LEGACY_NAMES" = "true" ]; then
+          WITH_TAG="$(ev git branch -r --list "origin/patch/$VERSION" "origin/patch/$LINE" "origin/backpatch/$VERSION" "origin/backpatch/$LINE" --contains "refs/tags/$OSERA_TAG")"
+        else
+          WITH_TAG="$(ev git branch -r --list "origin/patch/$VERSION" "origin/patch/$LINE" --contains "refs/tags/$OSERA_TAG")"
+        fi
         WITH_TAG="$(sed 's/^[ *]*//' <<<"$WITH_TAG" | paste -sd, -)"
 
         # 2. every branch with patch in its name, for the message when none matches

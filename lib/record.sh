@@ -24,6 +24,7 @@
 : "${OSERA_EXPECTED_ORG:=finos-osera-forks}"
 : "${OSERA_APPROVED_PRODUCERS:=.osera-standards/docs/_data/approved_producers.yml}" # the standards repository at the pack ref, checked out by the workflow
 : "${OSERA_ACTOR:=${GITHUB_ACTOR:-}}"
+: "${OSERA_LEGACY_NAMES:=false}"  # DEV ONLY when true: Moderne's existing names accepted next to the ratified ones
 : "${OSERA_PACK:=OSERA-SP-0.1.0}"
 : "${OSERA_PACK_FILE:=.osera-standards/docs/catalog/packs/${OSERA_PACK}.json}" # the pack file at the standards ref, names every standard's version
 : "${OSERA_LIBRARY:=}"
@@ -32,7 +33,7 @@
 : "${OSERA_OWNER:=}"     # from the run context when the caller is the repository under test, empty otherwise
 : "${OSERA_OWNER_ID:=}"
 : "${OSERA_IS_FORK:=}"
-export OSERA_EXPECTED_ORG OSERA_APPROVED_PRODUCERS OSERA_ACTOR OSERA_PACK OSERA_PACK_FILE OSERA_LIBRARY OSERA_RESULTS_DIR OSERA_REGISTRY_REF
+export OSERA_EXPECTED_ORG OSERA_APPROVED_PRODUCERS OSERA_ACTOR OSERA_LEGACY_NAMES OSERA_PACK OSERA_PACK_FILE OSERA_LIBRARY OSERA_RESULTS_DIR OSERA_REGISTRY_REF
 export OSERA_OWNER OSERA_OWNER_ID OSERA_IS_FORK
 mkdir -p "$OSERA_RESULTS_DIR"
 
@@ -47,6 +48,12 @@ upstream_version_of() {
   version="${tag#v}"
   # 2. generic form: everything before the + is the upstream version
   if [[ "$version" == *+osera-patch.* ]]; then
+    version="${version%%+*}"
+    printf '%s\n' "$version"
+    return 0
+  fi
+  # 2b. DEV ONLY: Moderne's existing form v3.10.6.Final+backpatch.003 -> 3.10.6.Final
+  if [ "$OSERA_LEGACY_NAMES" = "true" ] && [[ "$version" == *+backpatch.* ]]; then
     version="${version%%+*}"
     printf '%s\n' "$version"
     return 0
@@ -67,6 +74,14 @@ upstream_version_of() {
 VERSION="$(upstream_version_of "$OSERA_TAG")"
 LINE="$(printf '%s' "$VERSION" | cut -d. -f1,2).x"
 BASE="v${VERSION}+patch.baseline"
+# DEV ONLY: when the repository carries Moderne's baseline tag and not the ratified one, the checks use that
+if [ "$OSERA_LEGACY_NAMES" = "true" ] && [ -d .git ]; then
+  if ! git tag --list "$BASE" | grep -qx "$BASE"; then
+    if git tag --list "v${VERSION}+backpatch.baseline" | grep -qx "v${VERSION}+backpatch.baseline"; then
+      BASE="v${VERSION}+backpatch.baseline"
+    fi
+  fi
+fi
 export VERSION LINE BASE
 
 EXPECTED=""

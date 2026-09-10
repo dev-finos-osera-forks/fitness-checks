@@ -32,7 +32,8 @@ jobs:
     # At the move to finos-osera these lines change and nothing else.
     env:
       GH_TOKEN: ${{ github.token }} # the checks read the fork parent and commit accounts through the API; the job's own token, read only
-      LIBRARY: finos-osera-forks/fitness-checks
+      LIBRARY: dev-finos-osera-forks/fitness-checks
+      LEGACY_NAMES: "true" # DEV ONLY: Moderne's existing names (+backpatch.NNN tags, +backpatch.baseline, backpatch/<line> branches) are accepted next to the ratified ones. The real library has no such line.
       STANDARDS: finos-osera/remediation-standards # the approved producer registry lives here, docs/_data/approved_producers.yml (REL-004)
       STANDARDS_REF: main # the pack's release tag (OSERA-SP-0.1.0) once it exists; until then main
       REFERENCE: d1gital-f/patch-jackson-core
@@ -87,6 +88,7 @@ jobs:
             echo "OSERA_APPROVED_PRODUCERS=.osera-standards/docs/_data/approved_producers.yml"
             echo "OSERA_ACTOR=$ACTOR"
             echo "OSERA_RESULTS_DIR=$RUNNER_TEMP/osera-results"
+            echo "OSERA_LEGACY_NAMES=$LEGACY_NAMES"
             echo "OSERA_PACK=OSERA-SP-0.1.0"
             echo "OSERA_PACK_FILE=.osera-standards/docs/catalog/packs/OSERA-SP-0.1.0.json" # the pack file the checks compare their version with, at STANDARDS_REF
             # what GitHub itself says about the repository the workflow runs in; empty when the library tests a reference, the checks then ask the API

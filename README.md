@@ -1,8 +1,10 @@
-# fitness-checks
+# fitness-checks (dev)
+
+**Dev fork of [finos-osera-forks/fitness-checks](https://github.com/finos-osera-forks/fitness-checks).** One difference: `LEGACY_NAMES` is `true` in the workflow, so Moderne's existing names (`+backpatch.NNN` release tags, `+backpatch.baseline`, `backpatch/<line>` branches) are accepted next to the ratified ones, to run the checks against the existing Wave 0 forks before they are republished the new way. The real library never accepts them.
 
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![lint](https://github.com/finos-osera-forks/fitness-checks/actions/workflows/lint.yaml/badge.svg)](https://github.com/finos-osera-forks/fitness-checks/actions/workflows/lint.yaml)
-[![e2e](https://github.com/finos-osera-forks/fitness-checks/actions/workflows/e2e.yaml/badge.svg)](https://github.com/finos-osera-forks/fitness-checks/actions/workflows/e2e.yaml)
+[![lint](https://github.com/dev-finos-osera-forks/fitness-checks/actions/workflows/lint.yaml/badge.svg)](https://github.com/dev-finos-osera-forks/fitness-checks/actions/workflows/lint.yaml)
+[![e2e](https://github.com/dev-finos-osera-forks/fitness-checks/actions/workflows/e2e.yaml/badge.svg)](https://github.com/dev-finos-osera-forks/fitness-checks/actions/workflows/e2e.yaml)
 
 This repository contains the reusable GitHub Workflow and the Composite Actions that run the source side
 fitness checks of the [OSERA Remediation Standards](https://standards.osera.finos.org/) on a patch repository

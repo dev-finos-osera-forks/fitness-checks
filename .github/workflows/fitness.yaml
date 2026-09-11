@@ -44,7 +44,7 @@ jobs:
       GH_TOKEN: ${{ github.token }} # the checks read the fork parent and commit accounts through the API; the job's own token, read only
       LIBRARY: dev-finos-osera-forks/fitness-checks
       LEGACY_NAMES: "true" # DEV ONLY: Moderne's existing names (+backpatch.NNN tags, +backpatch.baseline, backpatch/<line> branches) are accepted next to the ratified ones. The real library has no such line.
-      STANDARDS: finos-osera/remediation-standards # the approved producer registry lives here, docs/_data/approved_producers.yml (REL-004)
+      STANDARDS: dev-finos-osera-forks/remediation-standards # DEV ONLY: the dev fork of the standards repository with the dev producer entries; the real library reads finos-osera/remediation-standards
       STANDARDS_REF: main # the pack's release tag (OSERA-SP-0.1.0) once it exists; until then main
       REFERENCE: d1gital-f/patch-jackson-core
     outputs:

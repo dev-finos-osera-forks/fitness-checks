@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false # the token is not left in .git/config
-          repository: finos-osera/remediation-standards
+          repository: dev-finos-osera-forks/remediation-standards
           ref: main # kept equal to STANDARDS_REF in fitness.yaml, the step below checks that
           path: .osera-standards
       - name: Every check implements the standard version the pack names, and says so in its description

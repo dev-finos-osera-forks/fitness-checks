@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Builds result.json from the per requirement records (jq -s: the input is the array of all records).
-# Arguments: $pack $pack_checksum $repo $release $commit $producer $library $registry_ref $rehearsal.
+# Arguments: $pack $pack_checksum $repo $release $commit $producer $library $registry_ref $evidence_sha $rehearsal.
 
 # The one rollup, used per standard and at the top: any fail is a fail, then warn, then not-tested, then pass;
 # not-applicable only when everything underneath is.
@@ -30,6 +30,7 @@ def rollup:
     release: $release,
     commit: $commit,
     artifact_digest: null,
+    evidence_file: (if $evidence_sha == "" then null else {path: ".osera/patch-evidence.yaml", artifact: "patch-evidence.yaml", digest: $evidence_sha} end),
     library: (if $library == "" then null else $library end),
     producer: (if $producer == "" then null else $producer end),
     result: ($standards | rollup),

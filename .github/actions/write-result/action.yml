@@ -1,7 +1,7 @@
 name: write the fitness result
 description: "Collect the per requirement records into result.json: the fitness page's fields, one entry per requirement with expected, observed and the evidence, one status per standard, the ControlPlane proposals underneath"
 author: ControlPlane for the FINOS OSERA Exchange
-# Reads the job environment set by the fitness workflow (OSERA_TAG, OSERA_REPOSITORY, OSERA_PACK, OSERA_RESULTS_DIR, OSERA_LIBRARY). No inputs.
+# Reads the job environment set by the fitness workflow (OSERA_TAG, OSERA_REPOSITORY, OSERA_PACK, OSERA_RESULTS_DIR, OSERA_LIBRARY, OSERA_APPROVED_PRODUCERS, OSERA_ACTOR). No inputs.
 outputs:
   result:
     description: 'pass, warn, fail or not-tested'
@@ -22,6 +22,19 @@ runs:
         # 1. what this run was about
         COMMIT="$(git rev-parse "refs/tags/${OSERA_TAG}^{commit}")"
         PRODUCER="$(yq -r '.producer // ""' .osera/patch-evidence.yaml 2>/dev/null || true)"
+
+        # 1b. the producer's accounts, the fitness page's producer_accounts block (REL-004.REQ-002): the registry
+        #     entry's staging_account and github_users copied as they are, the account that pushed the tag as observed,
+        #     the upload account left null for the gate to fill. No entry, or no file: registry is null and the
+        #     REL-004 proposals below say so in their own records.
+        REGISTRY_ENTRY="null"
+        if [ -n "$PRODUCER" ] && [ -f "$GITHUB_WORKSPACE/$OSERA_APPROVED_PRODUCERS" ]; then
+          REGISTRY_ENTRY="$(P="$PRODUCER" yq -o=json -I=0 '[.producers[] | select(.id == env(P)) | {"staging_account": .staging_account, "github_users": .github_users}] | .[0] // null' "$GITHUB_WORKSPACE/$OSERA_APPROVED_PRODUCERS" 2>/dev/null || echo null)"
+        fi
+        if [ -z "$REGISTRY_ENTRY" ]; then
+          REGISTRY_ENTRY="null"
+        fi
+        TAG_ACTOR="${OSERA_ACTOR:-}"
 
         # 2. exactly one record per expected requirement: a missing one is written as not-tested, an unexpected one stops the run
         EXPECTED="FORK-001.REQ-001 FORK-001.REQ-002 FORK-002.REQ-001 FORK-003.REQ-001 SRC-002.REQ-001 SRC-002.REQ-002 SRC-003.REQ-001 REL-001.REQ-001 CP-REL-004-01 CP-REL-004-02 CP-REL-004-03"
@@ -61,6 +74,7 @@ runs:
            --arg pack_checksum "$PACK_CHECKSUM" \
            --arg evidence_sha "$EVIDENCE_SHA" \
            --arg rehearsal "${OSERA_REHEARSAL:-false}" \
+           --argjson registry_entry "$REGISTRY_ENTRY" --arg tag_actor "$TAG_ACTOR" \
            ./*.json > result.json
 
         echo "result=$(jq -r .result result.json)" >> "$GITHUB_OUTPUT"

@@ -114,6 +114,7 @@ Actions take no inputs: the workflow sets the `OSERA_*` environment once and eve
   "standard_pack": "OSERA-SP-0.1.0", "pack_checksum": null,
   "repository": "dev-finos-osera-forks/patch-commons-codec", "release": "v1.16.0+osera-patch.001", "commit": "5c4ae60a...",
   "artifact_digest": null, "library": "finos-osera-forks/fitness-checks@4dcdf38...", "producer": "controlplane-dv",
+  "producer_accounts": {"registry": null, "observed": {"tag_actor": "d1gital-f", "upload_account": null}},
   "result": "fail",
   "signature": "see the GitHub artifact attestation on this file",
   "standards": [{"standard": "FORK-003", "standard_version": "0.1.0", "status": "fail"}],
@@ -128,7 +129,7 @@ Actions take no inputs: the workflow sets the `OSERA_*` environment once and eve
 }
 ```
 
-`expected` is the rule in words with the actual values in it, `observed` what the repository showed, `evidence` the commands that showed it with their real output (first 40 lines). One rollup everywhere: any fail is a fail, then warn, then not-tested, then pass; not-applicable only when everything underneath is. The signed copy lives in GitHub's attestation store for the patch repository (and, for a public repository, in Sigstore's transparency log), under two subjects: the digest of `result.json`, for `gh attestation verify result.json`, and the SHA256 of the tagged commit id, for the gate. The gate fetches and verifies it at upload time and keeps it with the artifact. To find it by hand: `printf '%s' <commit> | sha256sum`, then `gh api repos/<owner>/<repo>/attestations/sha256:<digest>`.
+`producer_accounts` is the fitness page's REL-004.REQ-002 block: `registry` is the producer's `staging_account` and `github_users` copied from the registry entry (null when the producer has no entry, the REL-004 proposals say so), `observed.tag_actor` the GitHub account that pushed the release tag (`github.actor` of the push event that started the run), `observed.upload_account` null here, the gate fills it at upload time. `expected` is the rule in words with the actual values in it, `observed` what the repository showed, `evidence` the commands that showed it with their real output (first 40 lines). One rollup everywhere: any fail is a fail, then warn, then not-tested, then pass; not-applicable only when everything underneath is. The signed copy lives in GitHub's attestation store for the patch repository (and, for a public repository, in Sigstore's transparency log), under two subjects: the digest of `result.json`, for `gh attestation verify result.json`, and the SHA256 of the tagged commit id, for the gate. The gate fetches and verifies it at upload time and keeps it with the artifact. To find it by hand: `printf '%s' <commit> | sha256sum`, then `gh api repos/<owner>/<repo>/attestations/sha256:<digest>`.
 
 ## Testing
 

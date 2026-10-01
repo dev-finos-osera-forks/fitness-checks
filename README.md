@@ -1,6 +1,6 @@
 # fitness-checks (dev)
 
-**Dev fork of [finos-osera-forks/fitness-checks](https://github.com/finos-osera-forks/fitness-checks).** One difference: `LEGACY_NAMES` is `true` in the workflow, so Moderne's existing names (`+backpatch.NNN` release tags, `+backpatch.baseline`, `backpatch/<line>` branches) are accepted next to the ratified ones, to run the checks against the existing Wave 0 forks before they are republished the new way. The real library never accepts them.
+**Dev fork of [finos-osera-forks/fitness-checks](https://github.com/finos-osera-forks/fitness-checks).** The checks are production's, line for line. Two lines differ, each marked DEV ONLY: the library calls itself `dev-finos-osera-forks/fitness-checks`, and it reads the producer registry from `dev-finos-osera-forks/remediation-standards`, where the dev producer is registered. Moderne's old names are no longer accepted, as in production (1 Oct 2026: no production fork carries them).
 
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![lint](https://github.com/dev-finos-osera-forks/fitness-checks/actions/workflows/lint.yaml/badge.svg)](https://github.com/dev-finos-osera-forks/fitness-checks/actions/workflows/lint.yaml)

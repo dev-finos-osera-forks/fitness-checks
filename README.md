@@ -113,12 +113,12 @@ Observe checks, the pack's `observe_standards` (fitness page: observe checks run
 | `fork-004-req-003` | FORK-004.REQ-003 | the repository is in the expected organisation and is a GitHub fork; the parent is recorded, which upstream is the appropriate one is not defined yet |
 | `src-001-req-001` | SRC-001.REQ-001 | a patch basis per fix (`fixes[].basis`, or `patch.basis.type`); not tested until the working group defines the vocabulary |
 | `rel-006-req-001` | REL-006.REQ-001 | an authorization record (`backlog_item`, `sponsor_record`); not tested until the backlog and sponsorship model is settled |
-| `rel-007-req-001` | REL-007.REQ-001 | not tested: the artifact digest is not known in the patch repository; the workflows that call a build provenance action are listed |
-| `rel-007-req-002` | REL-007.REQ-002 | not tested: it reads the attestation of REL-007.REQ-001 |
 | `rel-008-req-001` | REL-008.REQ-001 | build security scan evidence (`build_security_scan_tool`, `scan_scope`, `scan_result`); not tested until the evidence format is defined |
 | `rel-008-req-002` | REL-008.REQ-002 | finding disposition (`unresolved_findings`, `finding_disposition`, `not_applicable_rationale`); not tested until the evidence format is defined |
 | `evd-001-req-001` | EVD-001.REQ-001 | `recipient_guidance` (or `patch.recipient_guidance`) valid against the standards repository's `docs/schemas/osera-recipient-guidance-0.1.0.schema.json` ([`lib/schema.jq`](lib/schema.jq)) |
 | `app-001-req-001` | APP-001.REQ-001 | not tested: it reads the feed and the recipient's estate, neither is in the patch repository |
+
+REL-007 (REL-007.REQ-001 and REL-007.REQ-002, build provenance and signed attestation) is checked by the gate at promotion, not here: it is about the digest of the artifact, which is built and uploaded after this run. The gate records it in the verdict's `observe` list.
 
 Actions take no inputs: the workflow sets the `OSERA_*` environment once and every action reads it. Each sources [`lib/record.sh`](lib/record.sh) and reads the same way: `check_is` names the requirement, `expect` states the rule with the actual values in it, `step` names what is being done, `ev` runs a command and keeps its command line (quoted so it can be pasted into a shell), exit code and output as evidence, `given` keeps a value GitHub set in the run context (owner, owner id, fork flag), `record` writes the status and what was observed. A check that dies before recording is written as `not-tested` with the step that failed and the evidence gathered so far. The artifact side checks (REL-002 bytecode level, REL-003 version pattern, REL-004 at the upload and at publication, REL-005 files and checksums, FEED-001) belong to the gate and are not here.
 

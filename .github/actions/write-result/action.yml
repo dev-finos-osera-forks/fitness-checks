@@ -38,8 +38,8 @@ runs:
 
         # 2. exactly one record per expected requirement: a missing one is written as not-tested, an unexpected one stops the run.
         #    OBSERVE are the requirements of the pack's observe_standards: recorded apart from the rollup, so they never
-        #    change the result nor reach the checks the gate reads.
-        OBSERVE="FORK-004.REQ-001 FORK-004.REQ-002 FORK-004.REQ-003 SRC-001.REQ-001 REL-006.REQ-001 REL-007.REQ-001 REL-007.REQ-002 REL-008.REQ-001 REL-008.REQ-002 EVD-001.REQ-001 APP-001.REQ-001"
+        #    change the result nor reach the checks the gate reads. REL-007 is not listed: the gate checks it at promotion.
+        OBSERVE="FORK-004.REQ-001 FORK-004.REQ-002 FORK-004.REQ-003 SRC-001.REQ-001 REL-006.REQ-001 REL-008.REQ-001 REL-008.REQ-002 EVD-001.REQ-001 APP-001.REQ-001"
         EXPECTED="FORK-001.REQ-001 FORK-001.REQ-002 FORK-002.REQ-001 FORK-003.REQ-001 SRC-002.REQ-001 SRC-002.REQ-002 SRC-003.REQ-001 REL-001.REQ-001 CP-REL-004-01 CP-REL-004-02 CP-REL-004-03 $OBSERVE"
         OBSERVE_JSON="$(tr ' ' '\n' <<<"$OBSERVE" | jq -R . | jq -cs .)"
         cd "$OSERA_RESULTS_DIR"

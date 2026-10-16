@@ -15,8 +15,6 @@ FORK-004.REQ-001 pass
 FORK-004.REQ-002 pass
 FORK-004.REQ-003 pass
 REL-006.REQ-001 not-tested
-REL-007.REQ-001 not-tested
-REL-007.REQ-002 not-tested
 REL-008.REQ-001 not-tested
 REL-008.REQ-002 not-tested
 SRC-001.REQ-001 not-tested

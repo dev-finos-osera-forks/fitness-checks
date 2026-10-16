@@ -198,6 +198,7 @@ jobs:
 
       # 4b. The observe checks, one action per requirement of the pack's observe_standards. They run and report,
       #     they are kept out of the rollup and out of the checks the gate reads, and they never fail the run.
+      #     REL-007 has no action here: it is about the artifact's digest, so the gate checks it at promotion.
       - name: FORK-004.REQ-001 (observe)
         uses: ./.osera-fitness/.github/actions/fork-004-req-001
         continue-on-error: true
@@ -212,12 +213,6 @@ jobs:
         continue-on-error: true
       - name: REL-006.REQ-001 (observe)
         uses: ./.osera-fitness/.github/actions/rel-006-req-001
-        continue-on-error: true
-      - name: REL-007.REQ-001 (observe)
-        uses: ./.osera-fitness/.github/actions/rel-007-req-001
-        continue-on-error: true
-      - name: REL-007.REQ-002 (observe)
-        uses: ./.osera-fitness/.github/actions/rel-007-req-002
         continue-on-error: true
       - name: REL-008.REQ-001 (observe)
         uses: ./.osera-fitness/.github/actions/rel-008-req-001
